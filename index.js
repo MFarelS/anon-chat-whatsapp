@@ -25,6 +25,7 @@ const {queue , active_sessions} = require('./config/database')
 const helper = require('./helper/helper')
 
 // nganbil prefix
+const prefix = process.env.PREFIX
 // Moment buat ngambil tanggal
 const moment = require('moment')
 
@@ -40,13 +41,13 @@ async function starts(){
 	})
 
 	zef.on('credentials-updated', () => {
-		const authinfo = bot.base64EncodedAuthInfo()
+		const authinfo = zef.base64EncodedAuthInfo()
 		console.log('[!] Credentials Updated')
 
 		fs.writeFileSync('./rizqi.json', JSON.stringify(authinfo, null, '\t'))
 	})
 
-	fs.existsSync('./rizqi.json') && bot.loadAuthInfo('./rizqi.json')
+	fs.existsSync('./rizqi.json') && zef.loadAuthInfo('./rizqi.json')
 
 	zef.on('connecting', () => {
 		console.log('Connecting')
@@ -58,6 +59,11 @@ async function starts(){
 
 	zef.on('chat-update', async (msg) => {
 		try {
+			if (!msg.hasNewMessage) return
+			msg = JSON.parse(JSON.stringify(msg)).messages[0]
+			if (!msg.message) return
+			if (msg.key && msg.key.remoteJid == 'status@broadcast') return
+			if (msg.key.fromMe) return
 			global.prefix
 			
 			const from = msg.key.remoteJid
@@ -74,7 +80,7 @@ async function starts(){
 			 const args = body.trim().split(/ +/).slice(1)
 			 const isCmd = body.startsWith(prefix)
 
-			 const groupMetadata = isGroup ? await bot.groupMetadata(from) : ''
+			 const groupMetadata = isGroup ? await zef.groupMetadata(from) : ''
 			 const groupName = isGroup ? groupMetadata.subject : ''
 			 const groupId   = isGroup ? groupMetadata.jid : ''
 			 const isMedia   = (type === 'imageMessage' || type === 'videoMessage' || type === 'audioMessage')
@@ -87,13 +93,59 @@ async function starts(){
 	         const isQuotedSticker   = type === 'extendedTextMessage' && content.includes('stickerMessage')
 	         const isQuotedMessage   = type === 'extendedTextMessage' && content.includes('conversation')
 
+			 const command = msg.message.conversation
 	         if (!isGroup){
-	         	const command = msg.message.conversation
-
 	         	if (command.includes('/start')){
-	         		await zef.sendMessage(id, "Selamat Datang di Anonim Chat bot\n bot yang digunakan untuk chatting secara anonim buatan anak KBBD XD")
-	         	} else {
-	         		await zef.sendMessage(id , "Kamu belum punya partner chatting \nketik /find untuk mencari partner chatting")
+	         		await zef.sendMessage(id, "Selamat Datang di Anonim Chat bot\n bot yang digunakan untuk chatting secara anonim buatan Rizqi a.k.a ZefianAlfian", text, {quoted: msg})
+	         	} else if (command.includes('/find')){
+	         		// Fungsi untuk mencari partner
+	         		const isActiveSess = helper.isActiveSession(id , bot)
+	                // Apakah user sudah punya sesi chatting ?
+	         		if(!isActiveSess) {
+	         		await zef.sendMessage(id , "Kegagalan Server!")
+	         		 }
+	         		
+	         		// Apakah user udah ada di antrian ?
+	         		const isQueue = await queue.find({user_id: id})
+	         		            if(!isQueue.length){
+	         		                // Kalo gak ada masukin ke antrian
+	         		                await queue.insert({user_id: id , timestamp: parseInt(moment().format('X'))})
+	         		            }
+	         		            // Kirim pesan kalo lagi nyari partner
+	         		            zef.sendMessage(id , '<i>Mencari Partner Chat ...</i>' , {parse_mode: 'html'})
+	         		            // apakah ada user lain yang dalam antrian ?
+	         		            var queueList = await queue.find({user_id: {$not: {$eq: id}}})
+	         		            // Selama gak ada user dalam antrian , cari terus boss
+	         		            while(queueList.length < 1){
+	         		                queueList = await queue.find({user_id: {$not: {$eq: id}}})
+	         		            }
+	         		
+	         		            // Nah dah ketemu nih , ambil user id dari partner
+	         		            const partnerId = queueList[0].user_id
+	         		            // Ini ngamdil data antrian kamu
+	         		            const you = await queue.findOne({user_id: id})
+	         		            // Ini ngamdil data antrian partner kamu
+	         		            const partner = await queue.findOne({user_id: partnerId})
+	         		
+	         		            // Kalo data antrian kamu belum di apus (atau belum di perintah /stop)
+	         		            if(you !== null){
+	         		                // apakah kamu duluan yang nyari partner atau partnermu
+	         		                if(you.timestamp < partner.timestamp){
+	         		                    // kalo kamu duluan kamu yang mulai sesi , partner mu cuma numpang
+	         		                    await active_sessions.insert({user1: id,user2:partnerId})
+	         		                }
+	         		                // Hapus data kamu sama partnermu dalam antrian
+	         		                for(let i = 0 ;i < 2;++i){
+	         		                    const data = await queue.find({user_id: (i > 0 ? partnerId : id)})
+	         		                    await queue.remove({id: data.id})
+	         		                }
+	         		
+	         		                // Kirim pesan ke kamu kalo udah nemu partner
+	         		                await zef.sendMessage(id , "Kamu Menemukan Partner chat\nSegera Kirim Pesan")
+	         	}
+	         } else if (isGroup) {
+	         	if (command.includes('/start')){
+	         		await zef.sendMessage(from, "Kamu berada di dalam grup", text, {quoted:msg})
 	         	}
 	         }
 } catch (e) {
