@@ -32,6 +32,8 @@ const moment = require('moment')
 // lakukan fungsi di bawah kalo ada pesan ke bot
 async function starts(){
 	const zef = new WAConnection()
+	zef.logger.level = 'warn'
+	
 	zef.on('qr', qr => {
 		qrcode.generate(qr, { small: true })
 		console.log(`[!] Scan qrcode dengan whatsapp`)
@@ -46,6 +48,12 @@ async function starts(){
 
 	fs.existsSync('./rizqi.json') && bot.loadAuthInfo('./rizqi.json')
 
+	zef.on('connecting', () => {
+		console.log('Connecting')
+	})
+	zef.on('open', () => {
+		console.log('Bot Is Online Now!!')
+	})
 	zef.connect()
 
 	zef.on('chat-update', async (msg) => {
@@ -78,6 +86,16 @@ async function starts(){
 	         const isQuotedAudio     = type === 'extendedTextMessage' && content.includes('audioMessage')
 	         const isQuotedSticker   = type === 'extendedTextMessage' && content.includes('stickerMessage')
 	         const isQuotedMessage   = type === 'extendedTextMessage' && content.includes('conversation')
+
+	         if (!isGroup){
+	         	const command = msg.message.conversation
+
+	         	if (command.includes('/start')){
+	         		await zef.sendMessage(id, "Selamat Datang di Anonim Chat bot\n bot yang digunakan untuk chatting secara anonim buatan anak KBBD XD")
+	         	} else {
+	         		await zef.sendMessage(id , "Kamu belum punya partner chatting \nketik /find untuk mencari partner chatting")
+	         	}
+	         }
 } catch (e) {
 	console.log(e)
 	}
