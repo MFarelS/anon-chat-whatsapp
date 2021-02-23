@@ -1,7 +1,22 @@
 // panggil konfigurasi di file .env
 require('dotenv').config()
 // Panggil library
-const TelegramBot = require('node-telegram-bot-api');
+const
+{
+   ChatModification,
+   WAConnection,
+   MessageType,
+   Presence,
+   MessageOptions,
+   Mimetype,
+   WALocationMessage,
+   WA_MESSAGE_STUB_TYPES,
+   ReconnectMode,
+   ProxyAgent,
+   waChatKey,
+   GroupSettingChange
+} = require("@adiwajshing/baileys");
+const qrcode = require("qrcode-terminal")
 
 // Ngambil collections di Database
 const {queue , active_sessions} = require('./config/database')
@@ -9,25 +24,75 @@ const {queue , active_sessions} = require('./config/database')
 // Fungsi Helper
 const helper = require('./helper/helper')
 
+// nganbil prefix
+const prefix = process.env.prefix
 // Moment buat ngambil tanggal
 const moment = require('moment')
 
 // Start Pooling bot
-const bot = new TelegramBot(process.env.TELEGRAM_KEY, {polling: true});
+const bot = new WAConnection();
 
 // lakukan fungsi di bawah kalo ada pesan ke bot
-bot.on('message' , async (msg) => {
+const starts = async zef => {
+	zef.on('qr', qr => {
+		qrcode.generate(qr, { small: true })
+		console.log(`[!] Scan qrcode dengan whatsapp`)
+	})
+
+	zef.on('credentials-updated', () => {
+		const authinfo = bot.base64EncodedAuthInfo()
+		console.log('[!] Credentials Updated')
+
+		fs.writeFileSync('./rizqi.json', JSON.stringify(authinfo, null, '\t'))
+	})
+
+	fs.existSync('./rizqi.json') && bot.loadAuthInfo('./rizqi.json')
+
+	zef.connect()
+
+	zef.on('chat-update', async (msg) => {
+		try {
+			global.prefix
+			
+			const from = msg.key.remoteJid
+			const isGroup = from.endsWith('@g.us')
+			const type = Object.keys(msg.message)[0]
+			const id = isGroup ? msg.participant : msg.key.remoteJid
+
+			const { text, extendedText, contact, location, liveLocation, image, video, sticker, document, audio, product } = MessageType
+
+			body = (type === 'conversation' && message.message.conversation.startsWith(prefix)) ? message.message.conversation : (type == 'imageMessage') && message.message.imageMessage.caption.startsWith(prefix) ? message.message.imageMessage.caption : (type == 'videoMessage') && message.message.videoMessage.caption.startsWith(prefix) ? message.message.videoMessage.caption : (type == 'extendedTextMessage') && message.message.extendedTextMessage.text.startsWith(prefix) ? message.message.extendedTextMessage.text : ''
+			budy = (type === 'conversation') ? message.message.conversation : (type === 'extendedTextMessage') ? message.message.extendedTextMessage.text : ''
+			
+			 const argv = body.slice(1).trim().split(/ +/).shift().toLowerCase()
+			 const args = body.trim().split(/ +/).slice(1)
+			 const isCmd = body.startsWith(prefix)
+
+			 const groupMetadata = isGroup ? await client.groupMetadata(from) : ''
+			 const groupName = isGroup ? groupMetadata.subject : ''
+			 const groupId   = isGroup ? groupMetadata.jid : ''
+			 const isMedia   = (type === 'imageMessage' || type === 'videoMessage' || type === 'audioMessage')
+			 
+			 const content = JSON.stringify(message.message)
+			 
+			 const isQuotedImage     = type === 'extendedTextMessage' && content.includes('imageMessage')
+	         const isQuotedVideo     = type === 'extendedTextMessage' && content.includes('videoMessage')
+	         const isQuotedAudio     = type === 'extendedTextMessage' && content.includes('audioMessage')
+	         const isQuotedSticker   = type === 'extendedTextMessage' && content.includes('stickerMessage')
+	         const isQuotedMessage   = type === 'extendedTextMessage' && content.includes('conversation')
+			 
 
     // Kalo pesannya private atau dari user bukan grup
-    if(msg.chat.type == 'private'){
+    if(!isGroup){
         // apakah ada perintah atau cuma text biasa atau gak ada text
-        const command = msg.text !== undefined ? msg.text.split(' ')[0] : ''
+        // const command = msg.text !== undefined ? msg.text.split(' ')[0] : ''
         // Ngambil id chat
-        const { id } = msg.chat
-        if(command == '/start'){
+        const { id } = id
+        const comend = msg.message.conversation
+        if(comend == '/start'){
             // Pesan Penyambutan :)
             await bot.sendMessage(id , "Selamat Datang di Anonim Chat bot\n bot yang digunakan untuk chatting secara anonim buatan anak KBBD XD")
-        }else if(command == '/find'){
+        }else if(comend == '/find'){
             // Fungsi untuk mencari partner
             const isActiveSess = helper.isActiveSession(id , bot)
             // Apakah user sudah punya sesi chatting ?
@@ -73,7 +138,7 @@ bot.on('message' , async (msg) => {
                 // Kirim pesan ke kamu kalo udah nemu partner
                 await bot.sendMessage(id , "Kamu Menemukan Partner chat\nSegera Kirim Pesan")
             }
-        }else if(command == '/stop'){
+        }else if(comend == '/stop'){
             // fungsi untuk berhenti mencari partner
 
             // Ngecek apa kamu ada sesi chatting
@@ -129,4 +194,13 @@ bot.on('message' , async (msg) => {
         // Nah ini buat orang yang masukin bot ke group , padahal bot cuma untuk private chat !
         await bot.sendMessage(msg.chat.id , "Bot ini hanya berlaku untuk chat private , bukan group cok !")
     }
+ 
+}catch (e) {
+	console.log(e)
+}
+})
+}
+
+( async () => {
+	await starts(bot)
 })

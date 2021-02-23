@@ -1,17 +1,32 @@
 {
-  "name": "anonimchat",
-  "version": "1.0.0",
-  "description": "",
+  "name": "zefian-anon-chat",
+  "version": "0.0.1",
+  "description": "telegram bot cloning dari anonim chat",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "",
+  "author": "ZefianAlfian",
   "license": "ISC",
   "dependencies": {
+    "@adiwajshing/baileys": "^3.4.1",
     "dotenv": "^8.2.0",
-    "moment": "^2.27.0",
-    "monk": "^7.3.1",
-    "node-telegram-bot-api": "^0.50.0"
-  }
+    "moment": "^2.29.1",
+    "monk": "^7.3.3",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZefianAlfian/anon-chat-whatsapp.git"
+  },
+  "keywords": [
+    "anonymous",
+    "chat",
+    "whatsapp",
+    "baileys"
+  ],
+  "bugs": {
+    "url": "https://github.com/ZefianAlfian/anon-chat-whatsapp/issues"
+  },
+  "homepage": "https://github.com/ZefianAlfian/anon-chat-whatsapp#readme"
 }
